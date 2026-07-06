@@ -1,0 +1,35 @@
+<!--
+Podplane <https://podplane.dev>
+Copyright The Podplane Authors
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Django Tasks</title>
+</head>
+<body style="max-width: 40rem; margin: 4rem auto; font-family: system-ui, sans-serif;">
+    <main>
+        <h1>Django Tasks</h1>
+
+        <form method="post" action="{% url 'tasks.store' %}">
+            {% csrf_token %}
+            <input name="title" placeholder="Add a task" autofocus>
+            <button type="submit">Add</button>
+        </form>
+
+        {% if tasks %}
+            <ul>
+                {% for task in tasks %}
+                    <li>{{ task }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No tasks yet.</p>
+        {% endif %}
+    </main>
+</body>
+</html>

@@ -1,0 +1,14 @@
+# Podplane <https://podplane.dev>
+# Copyright The Podplane Authors
+# SPDX-License-Identifier: Apache-2.0
+
+FROM reg.mini.dev/node:v22
+
+ENV NODE_ENV=production \
+    PORT=8080
+
+WORKDIR /app
+
+COPY demo/dist .
+
+CMD ["node", "server.js"]

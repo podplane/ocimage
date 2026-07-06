@@ -1,0 +1,40 @@
+# Podplane <https://podplane.dev>
+# Copyright The Podplane Authors
+# SPDX-License-Identifier: Apache-2.0
+
+FROM ruby:3.4-slim AS base
+
+ENV BUNDLE_DEPLOYMENT=1 \
+    BUNDLE_WITHOUT=development:test \
+    BUNDLE_PATH=/usr/local/bundle
+
+WORKDIR /bundle
+
+COPY Gemfile Gemfile.lock ./
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential pkg-config libsqlite3-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid 65532 nonroot \
+    && useradd --uid 65532 --gid 65532 --create-home --shell /usr/sbin/nologin nonroot \
+    && gem install bundler -v 2.6.9 -i /usr/local/bundle -N \
+    && bundle install \
+    && ruby -e 'path = "/usr/local/bundle/bin/bundle"; file = File.read(path); file.sub!(/\A#!.*/, "#!/usr/bin/ruby"); File.write(path, file)'
+
+FROM reg.mini.dev/ruby:v3.4
+
+ENV BUNDLE_APP_CONFIG=/usr/local/bundle \
+    BUNDLE_SILENCE_ROOT_WARNING=1 \
+    BUNDLE_DEPLOYMENT=1 \
+    BUNDLE_WITHOUT=development:test \
+    BUNDLE_PATH=/usr/local/bundle \
+    GEM_HOME=/usr/local/bundle \
+    PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/bundle/bin \
+    RUBY_YJIT_ENABLE=1
+
+COPY --from=base /usr/local/bundle /usr/local/bundle
+COPY --from=base /etc/passwd /etc/passwd
+COPY --from=base /etc/group /etc/group
+COPY --from=base --chown=nonroot:nonroot /home/nonroot /home/nonroot
+
+USER nonroot

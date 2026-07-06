@@ -1,0 +1,26 @@
+# Podplane <https://podplane.dev>
+# Copyright The Podplane Authors
+# SPDX-License-Identifier: Apache-2.0
+
+FROM dunglas/frankenphp:1-php8.4-bookworm
+
+ENV SERVER_NAME=:8080 \
+    APP_ENV=production \
+    APP_DEBUG=false \
+    LOG_CHANNEL=stderr
+
+RUN install-php-extensions \
+        opcache \
+        pdo_mysql \
+        pdo_pgsql \
+        zip \
+    && groupadd --gid 65532 nonroot \
+    && useradd --uid 65532 --gid 65532 --create-home --shell /usr/sbin/nologin nonroot \
+    && (setcap -r /usr/local/bin/frankenphp || true) \
+    && chown -R nonroot:nonroot /config/caddy /data/caddy
+
+WORKDIR /app
+
+USER nonroot
+
+CMD ["frankenphp", "php-server", "--listen", ":8080", "--root", "public"]

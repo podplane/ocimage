@@ -1,0 +1,14 @@
+# Podplane <https://podplane.dev>
+# Copyright The Podplane Authors
+# SPDX-License-Identifier: Apache-2.0
+
+[project]
+name = "ocimage-django-demo"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "Django~=5.2",
+    "gunicorn~=23.0",
+    "psycopg[binary]~=3.2",
+    "whitenoise~=6.9",
+]

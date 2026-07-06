@@ -1,0 +1,10 @@
+# Podplane <https://podplane.dev>
+# Copyright The Podplane Authors
+# SPDX-License-Identifier: Apache-2.0
+
+:{$PORT:8080} {
+    root * /usr/share/caddy
+    encode zstd gzip
+    try_files {path} /index.html
+    file_server
+}

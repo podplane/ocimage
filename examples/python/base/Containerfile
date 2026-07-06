@@ -1,0 +1,21 @@
+# Podplane <https://podplane.dev>
+# Copyright The Podplane Authors
+# SPDX-License-Identifier: Apache-2.0
+
+FROM reg.mini.dev/python:v3.14
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PORT=8080
+
+RUN groupadd --gid 65532 nonroot \
+    && useradd --uid 65532 --gid 65532 --create-home --shell /usr/sbin/nologin nonroot \
+    && python -m pip install --no-cache-dir \
+        'Django~=5.2' \
+        'gunicorn~=23.0' \
+        'psycopg[binary]~=3.2' \
+        'whitenoise~=6.9'
+
+WORKDIR /app
+
+USER nonroot

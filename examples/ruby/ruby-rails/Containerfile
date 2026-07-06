@@ -1,0 +1,21 @@
+# Podplane <https://podplane.dev>
+# Copyright The Podplane Authors
+# SPDX-License-Identifier: Apache-2.0
+
+ARG OCIMAGE_STORE_URL=
+FROM ${OCIMAGE_STORE_URL}ruby/base:v3.4
+
+ENV RAILS_ENV=production \
+    PORT=8080
+
+WORKDIR /app
+
+COPY --chown=nonroot:nonroot demo/app app
+COPY --chown=nonroot:nonroot demo/bin bin
+COPY --chown=nonroot:nonroot demo/config config
+COPY --chown=nonroot:nonroot demo/db db
+COPY --chown=nonroot:nonroot demo/lib lib
+COPY --chown=nonroot:nonroot demo/public public
+COPY --chown=nonroot:nonroot demo/config.ru demo/Gemfile demo/Gemfile.lock demo/Rakefile ./
+
+CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]

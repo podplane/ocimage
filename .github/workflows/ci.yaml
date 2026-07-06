@@ -1,0 +1,38 @@
+# Podplane <https://podplane.dev>
+# Copyright The Podplane Authors
+# SPDX-License-Identifier: Apache-2.0
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Set up golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          install-mode: binary
+          skip-cache: true
+
+      - name: Run precommit checks
+        run: make precommit
+
+      - name: Run tests
+        run: make test
+
+      - name: Build CLI
+        run: make build

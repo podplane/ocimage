@@ -1,0 +1,13 @@
+# Podplane <https://podplane.dev>
+# Copyright The Podplane Authors
+# SPDX-License-Identifier: Apache-2.0
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled
+
+ARG TARGETARCH
+
+WORKDIR /app
+
+COPY bin/${TARGETARCH}/ .
+
+CMD ["dotnet", "Ocimage.Tasks.Api.dll"]

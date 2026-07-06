@@ -1,0 +1,13 @@
+# Podplane <https://podplane.dev>
+# Copyright The Podplane Authors
+# SPDX-License-Identifier: Apache-2.0
+
+FROM scratch
+
+ARG TARGETARCH
+
+WORKDIR /app
+
+COPY bin/${TARGETARCH}/main /app/main
+
+CMD ["/app/main"]
