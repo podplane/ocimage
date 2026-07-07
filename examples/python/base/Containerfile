@@ -2,19 +2,36 @@
 # Copyright The Podplane Authors
 # SPDX-License-Identifier: Apache-2.0
 
+FROM reg.mini.dev/python:v3.14-dev AS base
+
+SHELL ["/usr/bin/sh", "-c"]
+
+USER root
+
+RUN addgroup -g 65532 nonroot \
+    && adduser -D -u 65532 -G nonroot -h /home/nonroot -s /usr/sbin/nologin nonroot \
+    && python -m venv /opt/venv
+
+ENV PATH=/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin
+
+RUN python -m pip install --no-cache-dir \
+        'Django~=5.2' \
+        'gunicorn~=23.0' \
+        'psycopg[binary]~=3.2' \
+        'tzdata~=2026.1' \
+        'whitenoise~=6.9'
+
 FROM reg.mini.dev/python:v3.14
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
+    PATH=/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin:/bin \
     PORT=8080
 
-RUN groupadd --gid 65532 nonroot \
-    && useradd --uid 65532 --gid 65532 --create-home --shell /usr/sbin/nologin nonroot \
-    && python -m pip install --no-cache-dir \
-        'Django~=5.2' \
-        'gunicorn~=23.0' \
-        'psycopg[binary]~=3.2' \
-        'whitenoise~=6.9'
+COPY --from=base /opt/venv /opt/venv
+COPY --from=base /etc/passwd /etc/passwd
+COPY --from=base /etc/group /etc/group
+COPY --from=base --chown=nonroot:nonroot /home/nonroot /home/nonroot
 
 WORKDIR /app
 

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 ARG OCIMAGE_STORE_URL=
-FROM ${OCIMAGE_STORE_URL}python/base:3.14-django
+FROM ${OCIMAGE_STORE_URL}python/base:3.14
 
 ENV DJANGO_SETTINGS_MODULE=config.settings \
     PORT=8080
