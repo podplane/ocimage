@@ -10,4 +10,4 @@ WORKDIR /app
 
 COPY bin/${TARGETARCH}/ .
 
-CMD ["dotnet", "Ocimage.Tasks.Api.dll"]
+CMD ["Ocimage.Tasks.Api.dll"]
