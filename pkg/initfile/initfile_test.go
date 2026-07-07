@@ -58,6 +58,29 @@ func TestDetectTypeScriptRuntimeAmbiguous(t *testing.T) {
 	}
 }
 
+// TestTemplateSelfContainedMetadata marks only templates that can be generated
+// without a separately prepared platform-team base image.
+func TestTemplateSelfContainedMetadata(t *testing.T) {
+	for _, id := range []string{"go-scratch-chi", "rust-scratch", "csharp-aspnet-chiseled", "typescript-hono-node"} {
+		tmpl, ok := FindTemplate(id)
+		if !ok {
+			t.Fatalf("template %q not found", id)
+		}
+		if !tmpl.SelfContained {
+			t.Fatalf("template %q should be self-contained", id)
+		}
+	}
+	for _, id := range []string{"php-laravel", "python-django", "ruby-rails"} {
+		tmpl, ok := FindTemplate(id)
+		if !ok {
+			t.Fatalf("template %q not found", id)
+		}
+		if tmpl.SelfContained {
+			t.Fatalf("template %q should require an intermediate base", id)
+		}
+	}
+}
+
 // TestWriteTemplateWritesEmbeddedFiles verifies embedded template contents are written to disk.
 func TestWriteTemplateWritesEmbeddedFiles(t *testing.T) {
 	dir := t.TempDir()
