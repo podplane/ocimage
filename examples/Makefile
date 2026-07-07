@@ -33,6 +33,7 @@ run: ## Run the built image
 		trap 'rm -f "$$tmp"' EXIT && \
 		$(TOOL) save --platform $(RUN_PLATFORM) -o "$$tmp" $(TAG) && \
 		docker load -i "$$tmp" && \
+		printf '\nRunning %s on http://localhost:%s\n' '$(TAG)' '$(PORT)' && \
 		docker run --rm -p $(PORT):8080 $(TAG)
 
 push: ## Push the built image
