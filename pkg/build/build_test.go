@@ -100,6 +100,29 @@ ENTRYPOINT ["/app"]
 	}
 }
 
+// TestBuildUnqualifiedTagOmitsImplicitDefaultRegistry verifies weak local tags
+// do not create index.docker.io directories in the OCI store.
+func TestBuildUnqualifiedTagOmitsImplicitDefaultRegistry(t *testing.T) {
+	work := t.TempDir()
+	storeRoot := filepath.Join(work, "store")
+	ctxDir := filepath.Join(work, "ctx")
+	if err := os.MkdirAll(ctxDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(ctxDir, "Containerfile"), []byte("FROM scratch\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Build(context.Background(), Options{ContextDir: ctxDir, Tags: []string{"apps/api:v1"}, StoreRoot: storeRoot}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(storeRoot, "apps", "api", "index.json")); err != nil {
+		t.Fatalf("expected apps/api layout: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(storeRoot, "index.docker.io")); !os.IsNotExist(err) {
+		t.Fatalf("index.docker.io should not be created, stat err = %v", err)
+	}
+}
+
 // TestBuildParsesQuotedEnvLabelAndCopyMetadata verifies quoted metadata and COPY flags.
 func TestBuildParsesQuotedEnvLabelAndCopyMetadata(t *testing.T) {
 	ctx := context.Background()

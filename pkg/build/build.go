@@ -77,12 +77,14 @@ func Build(ctx context.Context, opts Options) (*Result, error) {
 		return nil, fmt.Errorf("ocimage build requires at least one tag (-t, --tag)")
 	}
 	tags := make([]name.Tag, 0, len(opts.Tags))
+	tagLabels := make([]string, 0, len(opts.Tags))
 	for _, t := range opts.Tags {
 		ref, err := name.NewTag(t, name.WeakValidation)
 		if err != nil {
 			return nil, err
 		}
 		tags = append(tags, ref)
+		tagLabels = append(tagLabels, t)
 	}
 	st := store.Store{Root: opts.StoreRoot}
 	if err := cacheTaggedBases(ctx, st, cf, opts, platforms); err != nil {
@@ -112,14 +114,14 @@ func Build(ctx context.Context, opts Options) (*Result, error) {
 		pp := p
 		imgs = append(imgs, mutate.IndexAddendum{Add: images[i], Descriptor: v1.Descriptor{Platform: &pp}})
 	}
-	for _, tag := range tags {
+	for i, tag := range tags {
 		if len(platforms) == 1 {
-			progress("store %s", tag.Name())
+			progress("store %s", tagLabels[i])
 			if err := st.PutImage(ctx, tag, images[0]); err != nil {
 				return nil, err
 			}
 		} else {
-			progress("store %s", tag.Name())
+			progress("store %s", tagLabels[i])
 			idx := mutate.IndexMediaType(mutate.AppendManifests(empty.Index, imgs...), types.OCIImageIndex)
 			if err := st.PutIndex(ctx, tag, idx); err != nil {
 				return nil, err
@@ -128,12 +130,12 @@ func Build(ctx context.Context, opts Options) (*Result, error) {
 	}
 	res := &Result{Tags: opts.Tags, Platforms: platforms}
 	if opts.SBOM {
-		for _, tag := range tags {
-			progress("generate sbom for %s", tag.Name())
+		for i, tag := range tags {
+			progress("generate sbom for %s", tagLabels[i])
 			if err := attachSBOM(ctx, st, tag); err != nil {
 				return nil, err
 			}
-			res.SBOMs = append(res.SBOMs, tag.Name())
+			res.SBOMs = append(res.SBOMs, tagLabels[i])
 		}
 	}
 	if opts.Push {

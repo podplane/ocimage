@@ -73,3 +73,18 @@ func TestSaveWritesDockerArchive(t *testing.T) {
 		t.Fatalf("repo tags = %v, want [%s]", got, ref.Name())
 	}
 }
+
+// TestRepoPathOmitsImplicitDefaultRegistry verifies weak refs do not persist
+// go-containerregistry's parser-injected default registry in the store path.
+func TestRepoPathOmitsImplicitDefaultRegistry(t *testing.T) {
+	dir := t.TempDir()
+	st := Store{Root: dir}
+	ref := name.MustParseReference("apps/api:latest", name.WeakValidation).(name.Tag)
+	if got, want := st.RepoPath(ref), filepath.Join(dir, "apps", "api"); got != want {
+		t.Fatalf("RepoPath = %q, want %q", got, want)
+	}
+	other := name.MustParseReference("ghcr.io/acme/api:latest", name.WeakValidation).(name.Tag)
+	if got, want := st.RepoPath(other), filepath.Join(dir, "ghcr.io", "acme", "api"); got != want {
+		t.Fatalf("RepoPath other registry = %q, want %q", got, want)
+	}
+}

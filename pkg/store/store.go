@@ -211,6 +211,9 @@ func (s Store) Tag(ctx context.Context, src, dst name.Tag) error {
 
 // RepoPath returns the Zot-compatible repository layout path for ref.
 func (s Store) RepoPath(ref name.Tag) string {
+	if ref.Context().RegistryStr() == name.DefaultRegistry {
+		return filepath.Join(s.Root, filepath.FromSlash(ref.Context().RepositoryStr()))
+	}
 	return filepath.Join(s.Root, filepath.FromSlash(ref.Context().Name()))
 }
 
