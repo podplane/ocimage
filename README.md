@@ -6,6 +6,20 @@ ocimage is intentionally a packaging tool, not a general-purpose container build
 
 This makes ocimage a good fit for app developer workflows that need a small, fast CI dependency with no daemon or local container runtime requirement. It is not intended for every container image use case.
 
+## Install
+
+macOS/Linux via [Homebrew](https://brew.sh/):
+
+```sh
+brew install podplane/tap/ocimage
+```
+
+or via [Go](https://go.dev/):
+
+```sh
+go install github.com/podplane/ocimage@latest
+```
+
 ## Example: Go application
 
 Go is the simplest ocimage use case: cross-compile the binary first, then use ocimage to package it into one or more OCI images.

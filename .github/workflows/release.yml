@@ -39,6 +39,15 @@ jobs:
       - name: Install cosign
         uses: sigstore/cosign-installer@v4.0.0
 
+      - name: Generate Homebrew tap token
+        id: homebrew-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: 3948556
+          private-key: ${{ secrets.HOMEBREW_TAP_APP_PRIVATE_KEY }}
+          owner: podplane
+          repositories: homebrew-tap
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -46,3 +55,4 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ steps.homebrew-token.outputs.token }}

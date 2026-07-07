@@ -79,3 +79,16 @@ release:
   draft: false
   prerelease: auto
   replace_existing_artifacts: false
+
+brews:
+  - name: ocimage
+    repository:
+      owner: podplane
+      name: homebrew-tap
+      token: '{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}'
+    commit_author:
+      name: podplane-release-bot
+      email: release-bot@podplane.dev
+    homepage: 'https://github.com/podplane/ocimage'
+    description: 'Build, tag, & push container images. No runtime dependencies.'
+    license: 'Apache-2.0'
