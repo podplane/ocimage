@@ -5,17 +5,19 @@
 .PHONY: setup compile dev clean
 
 APP_DIR ?= demo
-API_URL ?= http://localhost:8081
+API_URL ?= http://localhost:8080
 RUNTIME ?= node
 
 ifeq ($(RUNTIME),node)
 INSTALL = cd "$(APP_DIR)" && npm install
 INSTALL_FROZEN = cd "$(APP_DIR)" && npm ci
 RUN = npm run
+RUN_DEV = npm run dev --
 else ifeq ($(RUNTIME),bun)
 INSTALL = bun install --cwd "$(APP_DIR)"
 INSTALL_FROZEN = bun install --cwd "$(APP_DIR)" --frozen-lockfile
 RUN = bun run
+RUN_DEV = bun run dev --
 else
 $(error unsupported RUNTIME "$(RUNTIME)"; use node or bun)
 endif
@@ -33,7 +35,7 @@ setup: ## Scaffold the TanStack SPA demo application
 	@echo "make dev RUNTIME=$(RUNTIME)"
 
 dev: ## Run the TanStack SPA locally
-	cd "$(APP_DIR)" && VITE_API_URL="$(API_URL)" PORT="$(PORT)" $(RUN) dev
+	cd "$(APP_DIR)" && VITE_API_URL="$(API_URL)" $(RUN_DEV) --port "$(PORT)"
 
 compile: ## Build the TanStack SPA
 	$(INSTALL_FROZEN)
