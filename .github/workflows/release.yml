@@ -12,6 +12,7 @@ on:
 permissions:
   contents: write
   id-token: write
+  packages: write
 
 jobs:
   release:
@@ -56,3 +57,37 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ steps.homebrew-token.outputs.token }}
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish container image
+        run: |
+          set -euo pipefail
+
+          version="${GITHUB_REF_NAME#v}"
+
+          rm -rf .release-image
+          mkdir -p .release-image/linux/amd64 .release-image/linux/arm64
+
+          amd64_binary="$(find dist -type f -name ocimage -path '*linux_amd64*' | head -n 1)"
+          arm64_binary="$(find dist -type f -name ocimage -path '*linux_arm64*' | head -n 1)"
+
+          test -n "$amd64_binary" || { echo "linux/amd64 ocimage binary not found in dist"; exit 1; }
+          test -n "$arm64_binary" || { echo "linux/arm64 ocimage binary not found in dist"; exit 1; }
+
+          cp "$amd64_binary" .release-image/linux/amd64/ocimage
+          cp "$arm64_binary" .release-image/linux/arm64/ocimage
+          cp Containerfile .release-image/Containerfile
+          chmod +x .release-image/linux/amd64/ocimage .release-image/linux/arm64/ocimage
+
+          .release-image/linux/amd64/ocimage build \
+            --platform linux/amd64,linux/arm64 \
+            -t "ghcr.io/podplane/ocimage:${version}" \
+            -t ghcr.io/podplane/ocimage:latest \
+            --push \
+            .release-image
