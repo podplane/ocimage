@@ -5,9 +5,15 @@
 ARG OCIMAGE_STORE_URL=
 FROM ${OCIMAGE_STORE_URL}php/base:8.4-frankenphp
 
+# WARNING: Not safe for production! These are demo-only defaults. Do not copy
+# the fixed APP_KEY or image-local file cache/session settings into production;
+# inject secrets and runtime configuration from the deployment environment instead.
 ENV APP_ENV=production \
     APP_DEBUG=false \
+    APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+    CACHE_STORE=file \
     LOG_CHANNEL=stderr \
+    SESSION_DRIVER=file \
     SERVER_NAME=:8080 \
     PORT=8080
 

@@ -22,3 +22,22 @@ demo/**
 !demo/artisan
 !demo/composer.json
 !demo/composer.lock
+
+# Keep Laravel runtime directories in the packaged image, but do not bake
+# development server state, compiled views, sessions, cache entries, or logs.
+demo/bootstrap/cache/**
+!demo/bootstrap/cache/.gitignore
+demo/storage/app/private/**
+!demo/storage/app/private/.gitignore
+demo/storage/app/public/**
+!demo/storage/app/public/.gitignore
+demo/storage/framework/cache/data/**
+!demo/storage/framework/cache/data/.gitignore
+demo/storage/framework/sessions/**
+!demo/storage/framework/sessions/.gitignore
+demo/storage/framework/testing/**
+!demo/storage/framework/testing/.gitignore
+demo/storage/framework/views/**
+!demo/storage/framework/views/.gitignore
+demo/storage/logs/**
+!demo/storage/logs/.gitignore

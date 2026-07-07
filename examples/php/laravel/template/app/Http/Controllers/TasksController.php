@@ -7,14 +7,17 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 
 class TasksController extends Controller
 {
-    public function index(Request $request): View
+    private const TasksKey = 'ocimage-laravel-tasks';
+
+    public function index(): View
     {
         return view('tasks', [
-            'tasks' => $request->session()->get('tasks', []),
+            'tasks' => Cache::store('file')->get(self::TasksKey, []),
         ]);
     }
 
@@ -22,9 +25,9 @@ class TasksController extends Controller
     {
         $title = trim((string) $request->input('title'));
         if ($title !== '') {
-            $tasks = $request->session()->get('tasks', []);
+            $tasks = Cache::store('file')->get(self::TasksKey, []);
             $tasks[] = $title;
-            $request->session()->put('tasks', $tasks);
+            Cache::store('file')->forever(self::TasksKey, $tasks);
         }
 
         return redirect('/');
