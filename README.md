@@ -1,10 +1,19 @@
 # ocimage
 
-ocimage packages prebuilt artifacts into OCI images and pushes them to OCI/Docker registries without Docker, Podman, Buildah, or Skopeo.
+ocimage packages prebuilt artifacts into OCI images and pushes them to OCI/Docker registries without Docker, Podman, Buildah, or Skopeo. For projects that need unsupported Dockerfile syntax, ocimage can optionally fall back to Docker Buildx.
 
 ocimage is intentionally a packaging tool, not a general-purpose container build executor. It does not run build steps and does not install system packages with tools like `apt-get`, `dnf`, or Alpine's `apk`. App builds should start from a base image that already contains the required operating system packages, runtime dependencies, users, and security policy. In many organisations, a platform team owns a small set of maintained base images with a central patching strategy; app teams then use ocimage in CI to copy prebuilt application artifacts into those bases quickly and reproducibly.
 
 This makes ocimage a good fit for app developer workflows that need a small, fast CI dependency with no daemon or local container runtime requirement. It is not intended for every container image use case.
+
+If a project already has a general-purpose Dockerfile, use Docker Buildx fallback:
+
+```sh
+ocimage build --docker -t ghcr.io/octocat/app:v1 .
+```
+
+ocimage still writes the result into its Zot-compatible local store. The fallback requires the `docker` command and Docker Buildx on `PATH`.
+Use `--docker=/path/to/docker` to choose a specific Docker (or compatible) binary.
 
 ## Install
 

@@ -5,6 +5,7 @@
 package containerfile
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,6 +25,10 @@ func TestParseRejectsUnsupportedRun(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "RUN is not supported") || !strings.Contains(err.Error(), ":2:") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	var unsupported *UnsupportedError
+	if !errors.As(err, &unsupported) || unsupported.Op != "RUN" || unsupported.Line != 2 {
+		t.Fatalf("unsupported error = %#v, want RUN on line 2", unsupported)
 	}
 }
 
@@ -56,5 +61,22 @@ func TestParseRejectsInstructionBeforeFrom(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "ENV cannot appear before FROM") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// TestParseRejectsUnsupportedCopyFlag verifies COPY flags are fallback-typed.
+func TestParseRejectsUnsupportedCopyFlag(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "Containerfile")
+	if err := os.WriteFile(file, []byte("FROM scratch\nCOPY --link app /app\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := ParseFile(file)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	var unsupported *UnsupportedError
+	if !errors.As(err, &unsupported) || unsupported.Op != "COPY" {
+		t.Fatalf("unsupported error = %#v, want COPY", unsupported)
 	}
 }

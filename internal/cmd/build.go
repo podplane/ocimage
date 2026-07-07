@@ -20,6 +20,7 @@ type buildFlags struct {
 	labels                []string
 	push                  bool
 	pull                  bool
+	docker                string
 	sbom                  string
 	unsupportedTarget     string
 	unsupportedNoCache    bool
@@ -89,7 +90,7 @@ func newBuildCmd() *cobra.Command {
 				case <-cmd.Context().Done():
 				}
 			}
-			res, err := buildlib.Build(cmd.Context(), buildlib.Options{ContextDir: ctxDir, File: flags.file, Tags: flags.tags, Platforms: platforms, BuildArgs: buildArgs, Labels: labels, StoreRoot: storeRoot, Push: flags.push, Pull: flags.pull, SBOM: sbom, Progress: progress})
+			res, err := buildlib.Build(cmd.Context(), buildlib.Options{ContextDir: ctxDir, File: flags.file, Tags: flags.tags, Platforms: platforms, BuildArgs: buildArgs, Labels: labels, StoreRoot: storeRoot, Push: flags.push, Pull: flags.pull, SBOM: sbom, Docker: flags.docker, Progress: progress})
 			close(progressc)
 			if progressErr := <-progressDone; progressErr != nil && err == nil {
 				return progressErr
@@ -122,6 +123,8 @@ func newBuildCmd() *cobra.Command {
 	cmd.Flags().StringArrayVar(&flags.labels, "label", nil, "set image labels")
 	cmd.Flags().BoolVar(&flags.push, "push", false, "push after building")
 	cmd.Flags().BoolVar(&flags.pull, "pull", false, "always attempt to pull base images instead of using the local OCI store first")
+	cmd.Flags().StringVar(&flags.docker, "docker", "", "use Docker Buildx fallback, optionally with a Docker binary path")
+	cmd.Flags().Lookup("docker").NoOptDefVal = "docker"
 	cmd.Flags().StringVar(&flags.sbom, "sbom", "false", "generate an SBOM attestation with syft")
 	cmd.Flags().Lookup("sbom").NoOptDefVal = "true"
 	cmd.Flags().StringVar(&flags.unsupportedTarget, "target", "", "unsupported")

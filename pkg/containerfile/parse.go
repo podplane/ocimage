@@ -12,6 +12,20 @@ import (
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
 )
 
+// UnsupportedError describes Containerfile syntax outside ocimage's supported subset.
+type UnsupportedError struct {
+	Path    string
+	Line    int
+	Op      string
+	Message string
+	Hint    string
+}
+
+// Error formats e with file and line context.
+func (e *UnsupportedError) Error() string {
+	return fmt.Sprintf("%s:%d: %s.\n\n%s", e.Path, e.Line, e.Message, e.Hint)
+}
+
 // ParseFile parses and validates a Containerfile or Dockerfile.
 func ParseFile(path string) (*File, error) {
 	f, err := os.Open(path)
@@ -61,8 +75,18 @@ func Validate(path string, cf *File) error {
 		case "ARG", "COPY", "WORKDIR", "ENV", "LABEL", "ENTRYPOINT", "CMD":
 			if in.Op == "COPY" {
 				for _, f := range in.Flags {
-					if strings.HasPrefix(f, "from=") || strings.HasPrefix(f, "--from=") {
+					flag := strings.TrimPrefix(f, "--")
+					key, _, ok := strings.Cut(flag, "=")
+					if !ok {
+						return validationError(path, in, "unsupported COPY flag "+f, "ocimage supports COPY --chmod and --chown; use Docker fallback for other COPY flags")
+					}
+					switch key {
+					case "chmod", "chown":
+						continue
+					case "from":
 						return validationError(path, in, "COPY --from is not supported", "ocimage does not support multi-stage builds")
+					default:
+						return validationError(path, in, "unsupported COPY flag --"+key, "ocimage supports COPY --chmod and --chown; use Docker fallback for other COPY flags")
 					}
 				}
 			}
@@ -78,9 +102,9 @@ func Validate(path string, cf *File) error {
 	return nil
 }
 
-// validationError formats a source-positioned validation error with a hint.
+// validationError returns a source-positioned unsupported syntax error.
 func validationError(path string, in Instruction, msg, hint string) error {
-	return fmt.Errorf("%s:%d: %s.\n\n%s", path, in.Line, msg, hint)
+	return &UnsupportedError{Path: path, Line: in.Line, Op: in.Op, Message: msg, Hint: hint}
 }
 
 // nodeTokens flattens parser nodes into token values.

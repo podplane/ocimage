@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
 const RefNameAnnotation = "org.opencontainers.image.ref.name"
@@ -31,6 +32,13 @@ const RefNameAnnotation = "org.opencontainers.image.ref.name"
 const referrerTagPrefix = "sha256-"
 
 type Store struct{ Root string }
+
+// PlatformArchive describes one platform image in a Docker archive.
+type PlatformArchive struct {
+	Path     string
+	Src      name.Tag
+	Platform v1.Platform
+}
 
 // PutImage writes an image to the store under ref.
 func (s Store) PutImage(_ context.Context, ref name.Tag, img v1.Image) error {
@@ -169,6 +177,31 @@ func (s Store) Save(ctx context.Context, refs []name.Tag, platform *v1.Platform,
 		images[ref] = img
 	}
 	return tarball.MultiRefWrite(images, w)
+}
+
+// LoadDockerArchives imports Docker archives into the store under dst.
+func (s Store) LoadDockerArchives(ctx context.Context, dst name.Tag, archives []PlatformArchive) error {
+	if len(archives) == 0 {
+		return errors.New("at least one archive is required")
+	}
+	if len(archives) == 1 {
+		img, err := tarball.ImageFromPath(archives[0].Path, &archives[0].Src)
+		if err != nil {
+			return err
+		}
+		return s.PutImage(ctx, dst, img)
+	}
+	imgs := make([]mutate.IndexAddendum, 0, len(archives))
+	for _, archive := range archives {
+		img, err := tarball.ImageFromPath(archive.Path, &archive.Src)
+		if err != nil {
+			return err
+		}
+		platform := archive.Platform
+		imgs = append(imgs, mutate.IndexAddendum{Add: img, Descriptor: v1.Descriptor{Platform: &platform}})
+	}
+	idx := mutate.IndexMediaType(mutate.AppendManifests(empty.Index, imgs...), types.OCIImageIndex)
+	return s.PutIndex(ctx, dst, idx)
 }
 
 // Tag creates dst as another store reference to src.

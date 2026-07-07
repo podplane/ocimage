@@ -8,10 +8,12 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
@@ -86,5 +88,34 @@ func TestRepoPathOmitsImplicitDefaultRegistry(t *testing.T) {
 	other := name.MustParseReference("ghcr.io/acme/api:latest", name.WeakValidation).(name.Tag)
 	if got, want := st.RepoPath(other), filepath.Join(dir, "ghcr.io", "acme", "api"); got != want {
 		t.Fatalf("RepoPath other registry = %q, want %q", got, want)
+	}
+}
+
+// TestLoadDockerArchivesImportsPlatformIndex verifies Docker archives can form an OCI index.
+func TestLoadDockerArchivesImportsPlatformIndex(t *testing.T) {
+	dir := t.TempDir()
+	st := Store{Root: filepath.Join(dir, "store")}
+	srcAMD := name.MustParseReference("podplane-build-temp.local/apps/api:v1-amd64", name.WeakValidation).(name.Tag)
+	srcARM := name.MustParseReference("podplane-build-temp.local/apps/api:v1-arm64", name.WeakValidation).(name.Tag)
+	dst := name.MustParseReference("apps/api:v1", name.WeakValidation).(name.Tag)
+	amdPath := filepath.Join(dir, "amd64.tar")
+	armPath := filepath.Join(dir, "arm64.tar")
+	if err := tarball.WriteToFile(amdPath, srcAMD, empty.Image); err != nil {
+		t.Fatal(err)
+	}
+	if err := tarball.WriteToFile(armPath, srcARM, empty.Image); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.LoadDockerArchives(context.Background(), dst, []PlatformArchive{
+		{Path: amdPath, Src: srcAMD, Platform: v1.Platform{OS: "linux", Architecture: "amd64"}},
+		{Path: armPath, Src: srcARM, Platform: v1.Platform{OS: "linux", Architecture: "arm64"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(st.Root, "apps", "api", "index.json")); err != nil {
+		t.Fatalf("expected imported index: %v", err)
+	}
+	if _, err := st.Image(context.Background(), dst, v1.Platform{OS: "linux", Architecture: "arm64"}); err != nil {
+		t.Fatalf("load arm64 image from imported index: %v", err)
 	}
 }

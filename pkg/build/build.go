@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -63,6 +64,10 @@ func Build(ctx context.Context, opts Options) (*Result, error) {
 	progress("load %s", filepath.Base(file))
 	cf, err := containerfile.ParseFile(file)
 	if err != nil {
+		var unsupported *containerfile.UnsupportedError
+		if opts.Docker != "" && errors.As(err, &unsupported) {
+			return dockerBuildxFallback(ctx, opts, ctxDir, file, unsupported)
+		}
 		return nil, err
 	}
 	matcher, err := dockerignoreMatcher(ctxDir, file)
@@ -73,18 +78,9 @@ func Build(ctx context.Context, opts Options) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(opts.Tags) == 0 {
-		return nil, fmt.Errorf("ocimage build requires at least one tag (-t, --tag)")
-	}
-	tags := make([]name.Tag, 0, len(opts.Tags))
-	tagLabels := make([]string, 0, len(opts.Tags))
-	for _, t := range opts.Tags {
-		ref, err := name.NewTag(t, name.WeakValidation)
-		if err != nil {
-			return nil, err
-		}
-		tags = append(tags, ref)
-		tagLabels = append(tagLabels, t)
+	tags, err := parseTags(opts.Tags)
+	if err != nil {
+		return nil, err
 	}
 	st := store.Store{Root: opts.StoreRoot}
 	if err := cacheTaggedBases(ctx, st, cf, opts, platforms); err != nil {
@@ -116,12 +112,12 @@ func Build(ctx context.Context, opts Options) (*Result, error) {
 	}
 	for i, tag := range tags {
 		if len(platforms) == 1 {
-			progress("store %s", tagLabels[i])
+			progress("store %s", opts.Tags[i])
 			if err := st.PutImage(ctx, tag, images[0]); err != nil {
 				return nil, err
 			}
 		} else {
-			progress("store %s", tagLabels[i])
+			progress("store %s", opts.Tags[i])
 			idx := mutate.IndexMediaType(mutate.AppendManifests(empty.Index, imgs...), types.OCIImageIndex)
 			if err := st.PutIndex(ctx, tag, idx); err != nil {
 				return nil, err
@@ -131,11 +127,11 @@ func Build(ctx context.Context, opts Options) (*Result, error) {
 	res := &Result{Tags: opts.Tags, Platforms: platforms}
 	if opts.SBOM {
 		for i, tag := range tags {
-			progress("generate sbom for %s", tagLabels[i])
+			progress("generate sbom for %s", opts.Tags[i])
 			if err := attachSBOM(ctx, st, tag); err != nil {
 				return nil, err
 			}
-			res.SBOMs = append(res.SBOMs, tagLabels[i])
+			res.SBOMs = append(res.SBOMs, opts.Tags[i])
 		}
 	}
 	if opts.Push {

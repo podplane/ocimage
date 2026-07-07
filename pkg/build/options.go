@@ -17,6 +17,7 @@ type Options struct {
 	Push       bool
 	Pull       bool
 	SBOM       bool
+	Docker     string
 	Progress   func(string)
 }
 
