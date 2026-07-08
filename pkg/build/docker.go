@@ -124,7 +124,7 @@ func ensureDockerBuildx(ctx context.Context, docker string) error {
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("Docker was found, but `docker buildx` is not available; Buildx is required for Docker fallback: %w: %s", err, strings.TrimSpace(stderr.String()))
+		return fmt.Errorf("docker was found, but `docker buildx` is not available; Buildx is required for Docker fallback: %w: %s", err, strings.TrimSpace(stderr.String()))
 	}
 	return nil
 }
