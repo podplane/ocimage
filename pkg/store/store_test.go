@@ -8,14 +8,18 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/layout"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 )
 
@@ -76,6 +80,29 @@ func TestSaveWritesDockerArchive(t *testing.T) {
 	}
 }
 
+// TestPushWritesImageToDestination verifies a stored image can be pushed under another ref.
+func TestPushWritesImageToDestination(t *testing.T) {
+	ctx := context.Background()
+	st := Store{Root: t.TempDir()}
+	src := name.MustParseReference("apps/api:v1", name.WeakValidation).(name.Tag)
+	if err := st.PutImage(ctx, src, empty.Image); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(registry.New())
+	t.Cleanup(server.Close)
+	dst := registryTag(t, server.URL, "apps/api:prod")
+	if err := st.Push(ctx, src, PushOptions{Destination: dst}); err != nil {
+		t.Fatal(err)
+	}
+	desc, err := remote.Get(dst, remote.WithContext(ctx))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if desc.MediaType.IsIndex() {
+		t.Fatalf("pushed media type = %s, want image", desc.MediaType)
+	}
+}
+
 // TestRepoPathOmitsImplicitDefaultRegistry verifies weak refs do not persist
 // go-containerregistry's parser-injected default registry in the store path.
 func TestRepoPathOmitsImplicitDefaultRegistry(t *testing.T) {
@@ -118,4 +145,51 @@ func TestLoadDockerArchivesImportsPlatformIndex(t *testing.T) {
 	if _, err := st.Image(context.Background(), dst, v1.Platform{OS: "linux", Architecture: "arm64"}); err != nil {
 		t.Fatalf("load arm64 image from imported index: %v", err)
 	}
+}
+
+// TestPushWritesIndexToDestination verifies a stored index is pushed as an index.
+func TestPushWritesIndexToDestination(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	st := Store{Root: filepath.Join(dir, "store")}
+	srcAMD := name.MustParseReference("ocimage-build-temp.local/apps/api:v1-amd64", name.WeakValidation).(name.Tag)
+	srcARM := name.MustParseReference("ocimage-build-temp.local/apps/api:v1-arm64", name.WeakValidation).(name.Tag)
+	src := name.MustParseReference("apps/api:v1", name.WeakValidation).(name.Tag)
+	amdPath := filepath.Join(dir, "amd64.tar")
+	armPath := filepath.Join(dir, "arm64.tar")
+	if err := tarball.WriteToFile(amdPath, srcAMD, empty.Image); err != nil {
+		t.Fatal(err)
+	}
+	if err := tarball.WriteToFile(armPath, srcARM, empty.Image); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.LoadDockerArchives(ctx, src, []PlatformArchive{
+		{Path: amdPath, Src: srcAMD, Platform: v1.Platform{OS: "linux", Architecture: "amd64"}},
+		{Path: armPath, Src: srcARM, Platform: v1.Platform{OS: "linux", Architecture: "arm64"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(registry.New())
+	t.Cleanup(server.Close)
+	dst := registryTag(t, server.URL, "apps/api:prod")
+	if err := st.Push(ctx, src, PushOptions{Destination: dst}); err != nil {
+		t.Fatal(err)
+	}
+	desc, err := remote.Get(dst, remote.WithContext(ctx))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !desc.MediaType.IsIndex() {
+		t.Fatalf("pushed media type = %s, want index", desc.MediaType)
+	}
+}
+
+// registryTag returns an insecure tag hosted by serverURL.
+func registryTag(t *testing.T, serverURL string, repoTag string) name.Tag {
+	t.Helper()
+	ref, err := name.NewTag(strings.TrimPrefix(serverURL, "http://")+"/"+repoTag, name.Insecure)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ref
 }

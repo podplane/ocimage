@@ -33,6 +33,12 @@ const referrerTagPrefix = "sha256-"
 
 type Store struct{ Root string }
 
+// PushOptions configures Store.Push.
+type PushOptions struct {
+	Destination   name.Tag
+	RemoteOptions []remote.Option
+}
+
 // PlatformArchive describes one platform image in a Docker archive.
 type PlatformArchive struct {
 	Path     string
@@ -136,12 +142,20 @@ func (s Store) PutIndex(_ context.Context, ref name.Tag, idx v1.ImageIndex) erro
 }
 
 // Push pushes a stored image or index to its remote registry reference.
-func (s Store) Push(ctx context.Context, ref name.Tag) error {
-	lp, desc, err := s.find(ref)
+func (s Store) Push(ctx context.Context, src name.Tag, opts ...PushOptions) error {
+	dst := src
+	remoteOpts := []remote.Option{remote.WithAuthFromKeychain(authn.DefaultKeychain)}
+	if len(opts) > 0 {
+		if opts[0].Destination != (name.Tag{}) {
+			dst = opts[0].Destination
+		}
+		remoteOpts = append(remoteOpts, opts[0].RemoteOptions...)
+	}
+	lp, desc, err := s.find(src)
 	if err != nil {
 		return err
 	}
-	opts := []remote.Option{remote.WithContext(ctx), remote.WithAuthFromKeychain(authn.DefaultKeychain)}
+	remoteOpts = append(remoteOpts, remote.WithContext(ctx))
 	if desc.MediaType.IsIndex() {
 		idx, err := lp.ImageIndex()
 		if err != nil {
@@ -151,19 +165,19 @@ func (s Store) Push(ctx context.Context, ref name.Tag) error {
 		if err != nil {
 			return err
 		}
-		if err := remote.WriteIndex(ref, child, opts...); err != nil {
+		if err := remote.WriteIndex(dst, child, remoteOpts...); err != nil {
 			return err
 		}
-		return s.pushReferrers(ctx, ref, lp, desc, opts...)
+		return s.pushReferrers(ctx, dst, lp, desc, remoteOpts...)
 	}
 	img, err := lp.Image(desc.Digest)
 	if err != nil {
 		return err
 	}
-	if err := remote.Write(ref, img, opts...); err != nil {
+	if err := remote.Write(dst, img, remoteOpts...); err != nil {
 		return err
 	}
-	return s.pushReferrers(ctx, ref, lp, desc, opts...)
+	return s.pushReferrers(ctx, dst, lp, desc, remoteOpts...)
 }
 
 // Save writes stored images as a Docker-compatible image archive.
